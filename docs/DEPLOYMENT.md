@@ -6,7 +6,7 @@ Current production style:
 
 - App Docker image GitHub Container Registry-তে push হবে।
 - VPS image pull করে `compose.prod.yml` দিয়ে app চালাবে।
-- Node app শুধু `127.0.0.1:3000` এ bind থাকবে।
+- Node app host-side only `127.0.0.1:3001` এ bind থাকবে, container-এর ভিতরে app `3000` port-এ চলবে।
 - Nginx public HTTP traffic receive করে app-এ proxy করবে।
 - Real secrets VPS-এর `.env` এবং GitHub Secrets-এ থাকবে।
 
@@ -53,6 +53,7 @@ APP_NAME=node-observability-deployment-lab
 PORT=3000
 LOG_LEVEL=info
 LOG_PRETTY=false
+APP_INTERNAL_PORT=3001
 
 MONGO_URI=mongodb+srv://<username>:<password>@<cluster-url>/node_observability_lab?retryWrites=true&w=majority
 
@@ -171,7 +172,7 @@ On push to `main`, `.github/workflows/deploy.yml` will:
 5. Pull latest code with `git pull --ff-only origin main`.
 6. Pull the new Docker image.
 7. Run `docker compose -f compose.prod.yml up -d`.
-8. Check `http://127.0.0.1:3000/health/ready`.
+8. Check `http://127.0.0.1:3001/health/ready`.
 
 ## Manual Production Deploy
 
@@ -189,7 +190,7 @@ docker run -d \
   -e NODE_ENV=production \
   -e LOG_PRETTY=false \
   -e LOG_LEVEL=info \
-  -p 127.0.0.1:3000:3000 \
+  -p 127.0.0.1:3001:3000 \
   node-observability-deployment-lab:prod
 ```
 
@@ -201,7 +202,7 @@ docker compose -f compose.prod.yml logs -f app
 docker compose -f compose.prod.yml pull
 docker compose -f compose.prod.yml up -d
 docker compose -f compose.prod.yml down
-curl http://127.0.0.1:3000/health/ready
+curl http://127.0.0.1:3001/health/ready
 ```
 
 ## Later: Add Domain And HTTPS

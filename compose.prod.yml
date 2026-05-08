@@ -12,7 +12,7 @@ services:
       LOG_PRETTY: 'false'
       ENABLE_CHAOS_ROUTES: 'false'
     ports:
-      - '127.0.0.1:${APP_INTERNAL_PORT:-3000}:3000'
+      - '127.0.0.1:${APP_INTERNAL_PORT:-3001}:3000'
     healthcheck:
       test:
         [

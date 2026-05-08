@@ -129,10 +129,14 @@ jobs:
             git pull --ff-only origin main
           fi
 
-          APP_IMAGE="$APP_IMAGE" docker compose -f compose.prod.yml pull
-          APP_IMAGE="$APP_IMAGE" docker compose -f compose.prod.yml up -d
+          APP_INTERNAL_PORT="${APP_INTERNAL_PORT:-3001}"
+
+          docker rm -f node-observability-app 2>/dev/null || true
+
+          APP_IMAGE="$APP_IMAGE" APP_INTERNAL_PORT="$APP_INTERNAL_PORT" docker compose -f compose.prod.yml pull
+          APP_IMAGE="$APP_IMAGE" APP_INTERNAL_PORT="$APP_INTERNAL_PORT" docker compose -f compose.prod.yml up -d
           docker image prune -f
 
           sleep 5
-          curl -fsS http://127.0.0.1:3000/health/ready
+          curl -fsS "http://127.0.0.1:${APP_INTERNAL_PORT}/health/ready"
           REMOTE
