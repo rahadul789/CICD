@@ -267,3 +267,5 @@ CI workflow:
 - runs on push to `main`/`master`
 - runs on pull request
 - steps: `npm ci`, syntax check, lint, format check, tests, Docker image build
+
+Lets test is github action is working
