@@ -24,6 +24,7 @@ healthRouter.get('/ready', (_req, res) => {
     checks: {
       database
     },
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    hola: 'hola'
   });
 });
