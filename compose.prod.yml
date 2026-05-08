@@ -1,0 +1,34 @@
+name: node-observability-prod
+
+services:
+  app:
+    image: ${APP_IMAGE:-ghcr.io/rahadul789/cicd:latest}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      LOG_PRETTY: 'false'
+      ENABLE_CHAOS_ROUTES: 'false'
+    ports:
+      - '127.0.0.1:${APP_INTERNAL_PORT:-3000}:3000'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/health/live').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '5'
+    labels:
+      service: node-app

@@ -10,6 +10,7 @@ Current status:
 - Milestone 4 complete: Prometheus metrics endpoint and custom app metrics
 - Milestone 5 complete: Docker Compose observability stack
 - Milestone 6 complete: tests, linting, formatting, and CI workflow
+- Milestone 7 complete: production compose, GHCR image deploy workflow, and VPS deployment guide
 
 ## Local Run
 
@@ -267,5 +268,38 @@ CI workflow:
 - runs on push to `main`/`master`
 - runs on pull request
 - steps: `npm ci`, syntax check, lint, format check, tests, Docker image build
+
+## Production Deployment
+
+Production deployment files:
+
+- `compose.prod.yml`
+- `.github/workflows/deploy.yml`
+- `deployment/nginx/ip-based.conf`
+- `deployment/production.env.example`
+- `docs/DEPLOYMENT.md`
+
+Deploy workflow:
+
+- runs on push to `main`
+- runs quality gate first
+- builds and pushes Docker image to `ghcr.io/rahadul789/cicd`
+- connects to VPS over SSH
+- runs `docker compose -f compose.prod.yml pull`
+- runs `docker compose -f compose.prod.yml up -d`
+- verifies `/health/ready`
+
+Required GitHub Secrets:
+
+- `VPS_HOST`
+- `VPS_USER`
+- `VPS_SSH_KEY`
+
+Optional GitHub Secrets:
+
+- `VPS_PORT`
+- `VPS_APP_DIR`
+
+Full guide: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 
 Lets test is github action is working

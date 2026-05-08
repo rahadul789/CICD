@@ -9,7 +9,8 @@ healthRouter.get('/live', (_req, res) => {
     status: 'ok',
     service: env.appName,
     uptime: process.uptime(),
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    reason: 'My name'
   });
 });
 
