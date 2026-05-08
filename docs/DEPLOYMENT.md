@@ -8,6 +8,8 @@ Current production style:
 - VPS image pull করে `compose.prod.yml` দিয়ে app চালাবে।
 - Node app host-side only `127.0.0.1:3001` এ bind থাকবে, container-এর ভিতরে app `3000` port-এ চলবে।
 - Nginx public HTTP traffic receive করে app-এ proxy করবে।
+- Prometheus, Grafana, Loki, and Promtail same production compose stack-e run korbe.
+- Monitoring ports only `127.0.0.1`-e bind thakbe, tai public internet theke directly open hobe na.
 - Real secrets VPS-এর `.env` এবং GitHub Secrets-এ থাকবে।
 
 ## Production Files
@@ -15,6 +17,10 @@ Current production style:
 - `compose.prod.yml`
 - `deployment/nginx/ip-based.conf`
 - `deployment/production.env.example`
+- `monitoring/prometheus/prometheus.yml`
+- `monitoring/grafana/provisioning`
+- `monitoring/loki/local-config.yml`
+- `monitoring/promtail/config.yml`
 - `.github/workflows/deploy.yml`
 
 ## One-Time VPS Setup
@@ -54,6 +60,11 @@ PORT=3000
 LOG_LEVEL=info
 LOG_PRETTY=false
 APP_INTERNAL_PORT=3001
+PROMETHEUS_HOST_PORT=9090
+GRAFANA_HOST_PORT=3002
+LOKI_HOST_PORT=3100
+GRAFANA_ADMIN_USER=admin
+GRAFANA_ADMIN_PASSWORD=change-this-strong-password
 
 MONGO_URI=mongodb+srv://<username>:<password>@<cluster-url>/node_observability_lab?retryWrites=true&w=majority
 
@@ -87,6 +98,69 @@ Then test:
 ```bash
 curl http://72.60.219.174/health/live
 curl http://72.60.219.174/health/ready
+```
+
+## Production Observability
+
+`compose.prod.yml` production-e ei services run kore:
+
+- `app`: Node.js application
+- `prometheus`: app-er `/metrics` scrape kore
+- `grafana`: dashboard and data visualization
+- `loki`: logs store kore
+- `promtail`: Docker container logs collect kore Loki-te pathay
+
+Public browser theke only app/Nginx accessible:
+
+```txt
+http://72.60.219.174
+```
+
+Monitoring tools private localhost-only:
+
+```txt
+Prometheus: http://127.0.0.1:9090
+Grafana: http://127.0.0.1:3002
+Loki: http://127.0.0.1:3100
+```
+
+Tai nijer computer theke Grafana dekhte SSH tunnel open korte hobe:
+
+```bash
+ssh -L 3002:127.0.0.1:3002 deploy@72.60.219.174
+```
+
+Tunnel open rekhe browser-e open:
+
+```txt
+http://localhost:3002
+```
+
+Login:
+
+```txt
+Username: admin
+Password: VPS .env-er GRAFANA_ADMIN_PASSWORD value
+```
+
+Prometheus dekhte chaile:
+
+```bash
+ssh -L 9090:127.0.0.1:9090 deploy@72.60.219.174
+```
+
+Then browser:
+
+```txt
+http://localhost:9090
+```
+
+Server theke direct health check:
+
+```bash
+curl http://127.0.0.1:9090/-/ready
+curl http://127.0.0.1:3002/api/health
+curl http://127.0.0.1:3100/ready
 ```
 
 ## GitHub Container Registry
@@ -172,11 +246,12 @@ On push to `main`, `.github/workflows/deploy.yml` will:
 5. Pull latest code with `git pull --ff-only origin main`.
 6. Pull the new Docker image.
 7. Run `docker compose -f compose.prod.yml up -d`.
-8. Check `http://127.0.0.1:3001/health/ready`.
+8. Start or update app, Prometheus, Grafana, Loki, and Promtail.
+9. Check app, Prometheus, Grafana, and Loki readiness.
 
-## Manual Production Deploy
+## Manual App-Only Deploy
 
-If you want to deploy manually:
+Normally production deploy `compose.prod.yml` diye korbe, karon etate app + monitoring shob ache. Sudhu app manually test korte chaile:
 
 ```bash
 cd /opt/node-observability-lab
@@ -199,10 +274,17 @@ docker run -d \
 ```bash
 docker compose -f compose.prod.yml ps
 docker compose -f compose.prod.yml logs -f app
+docker compose -f compose.prod.yml logs -f prometheus
+docker compose -f compose.prod.yml logs -f grafana
+docker compose -f compose.prod.yml logs -f loki
+docker compose -f compose.prod.yml logs -f promtail
 docker compose -f compose.prod.yml pull
 docker compose -f compose.prod.yml up -d
 docker compose -f compose.prod.yml down
 curl http://127.0.0.1:3001/health/ready
+curl http://127.0.0.1:9090/-/ready
+curl http://127.0.0.1:3002/api/health
+curl http://127.0.0.1:3100/ready
 ```
 
 ## Later: Add Domain And HTTPS

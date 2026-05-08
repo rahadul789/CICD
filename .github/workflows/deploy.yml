@@ -130,13 +130,38 @@ jobs:
           fi
 
           APP_INTERNAL_PORT="${APP_INTERNAL_PORT:-3001}"
+          PROMETHEUS_HOST_PORT="${PROMETHEUS_HOST_PORT:-9090}"
+          GRAFANA_HOST_PORT="${GRAFANA_HOST_PORT:-3002}"
+          LOKI_HOST_PORT="${LOKI_HOST_PORT:-3100}"
 
           docker rm -f node-observability-app 2>/dev/null || true
 
-          APP_IMAGE="$APP_IMAGE" APP_INTERNAL_PORT="$APP_INTERNAL_PORT" docker compose -f compose.prod.yml pull
-          APP_IMAGE="$APP_IMAGE" APP_INTERNAL_PORT="$APP_INTERNAL_PORT" docker compose -f compose.prod.yml up -d
+          export APP_IMAGE APP_INTERNAL_PORT PROMETHEUS_HOST_PORT GRAFANA_HOST_PORT LOKI_HOST_PORT
+
+          docker compose -f compose.prod.yml pull
+          docker compose -f compose.prod.yml up -d
           docker image prune -f
 
-          sleep 5
-          curl -fsS "http://127.0.0.1:${APP_INTERNAL_PORT}/health/ready"
+          wait_for_url() {
+            service_name="$1"
+            url="$2"
+
+            for attempt in $(seq 1 30); do
+              if curl -fsS "$url" >/dev/null; then
+                echo "$service_name is ready"
+                return 0
+              fi
+
+              echo "Waiting for $service_name ($attempt/30)"
+              sleep 2
+            done
+
+            echo "$service_name did not become ready"
+            return 1
+          }
+
+          wait_for_url app "http://127.0.0.1:${APP_INTERNAL_PORT}/health/ready"
+          wait_for_url prometheus "http://127.0.0.1:${PROMETHEUS_HOST_PORT}/-/ready"
+          wait_for_url grafana "http://127.0.0.1:${GRAFANA_HOST_PORT}/api/health"
+          wait_for_url loki "http://127.0.0.1:${LOKI_HOST_PORT}/ready"
           REMOTE
