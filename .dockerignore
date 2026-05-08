@@ -1,0 +1,16 @@
+node_modules
+npm-debug.log*
+.env
+.env.*
+!.env.example
+.git
+.github
+coverage
+dist
+Dockerfile
+docker-compose*.yml
+README.md
+MILESTONES.md
+.DS_Store
+Thumbs.db
+

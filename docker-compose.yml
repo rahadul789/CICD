@@ -1,0 +1,122 @@
+name: node-observability-lab
+
+services:
+  app:
+    build:
+      context: .
+      target: runner
+    image: node-observability-deployment-lab:local
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      APP_NAME: node-observability-deployment-lab
+      PORT: 3000
+      LOG_LEVEL: info
+      LOG_PRETTY: 'false'
+      MONGO_URI: ${MONGO_URI}
+      CORS_ORIGIN: '*'
+      ENABLE_CHAOS_ROUTES: 'true'
+      CHAOS_MAX_DELAY_MS: 10000
+      CHAOS_MAX_CPU_MS: 5000
+      CHAOS_MAX_MEMORY_MB: 100
+    ports:
+      - '${APP_HOST_PORT:-3000}:3000'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/health/live').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+    labels:
+      service: node-app
+    networks:
+      - observability
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.console.libraries=/usr/share/prometheus/console_libraries
+      - --web.console.templates=/usr/share/prometheus/consoles
+      - --web.enable-lifecycle
+    ports:
+      - '${PROMETHEUS_HOST_PORT:-9090}:9090'
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      app:
+        condition: service_healthy
+    labels:
+      service: prometheus
+    networks:
+      - observability
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+      GF_ANALYTICS_REPORTING_ENABLED: 'false'
+      GF_ANALYTICS_CHECK_FOR_UPDATES: 'false'
+    ports:
+      - '${GRAFANA_HOST_PORT:-3001}:3000'
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+      - loki
+    labels:
+      service: grafana
+    networks:
+      - observability
+
+  loki:
+    image: grafana/loki:3.3.2
+    restart: unless-stopped
+    command: ['-config.file=/etc/loki/local-config.yml']
+    ports:
+      - '${LOKI_HOST_PORT:-3100}:3100'
+    volumes:
+      - ./monitoring/loki/local-config.yml:/etc/loki/local-config.yml:ro
+      - loki_data:/loki
+    labels:
+      service: loki
+    networks:
+      - observability
+
+  promtail:
+    image: grafana/promtail:3.3.2
+    restart: unless-stopped
+    command: ['-config.file=/etc/promtail/config.yml']
+    volumes:
+      - ./monitoring/promtail/config.yml:/etc/promtail/config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - loki
+    labels:
+      service: promtail
+    networks:
+      - observability
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+
+networks:
+  observability:
+    driver: bridge

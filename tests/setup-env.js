@@ -1,0 +1,11 @@
+process.env.NODE_ENV = 'test';
+process.env.APP_NAME = 'node-observability-deployment-lab-test';
+process.env.PORT = '0';
+process.env.LOG_LEVEL = 'silent';
+process.env.LOG_PRETTY = 'false';
+process.env.MONGO_URI = 'mongodb://127.0.0.1:27017/test';
+process.env.CORS_ORIGIN = '*';
+process.env.ENABLE_CHAOS_ROUTES = 'false';
+process.env.CHAOS_MAX_DELAY_MS = '1000';
+process.env.CHAOS_MAX_CPU_MS = '100';
+process.env.CHAOS_MAX_MEMORY_MB = '10';
