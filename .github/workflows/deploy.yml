@@ -107,9 +107,19 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -p "$VPS_PORT" "$VPS_HOST" >> ~/.ssh/known_hosts
 
+      - name: Test SSH connection
+        run: |
+          ssh \
+            -i ~/.ssh/id_ed25519 \
+            -p "$VPS_PORT" \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            "$VPS_USER@$VPS_HOST" \
+            "whoami && hostname"
+
       - name: Deploy image
         run: |
-          ssh -i ~/.ssh/id_ed25519 -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" \
+          ssh -i ~/.ssh/id_ed25519 -p "$VPS_PORT" -o IdentitiesOnly=yes -o BatchMode=yes "$VPS_USER@$VPS_HOST" \
             "APP_IMAGE='$APP_IMAGE' VPS_APP_DIR='$VPS_APP_DIR' bash -s" <<'REMOTE'
           set -euo pipefail
 
