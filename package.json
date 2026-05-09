@@ -9,6 +9,7 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "check": "node --check src/server.js",
+    "traffic:socket": "node scripts/socket-traffic.js",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -38,6 +39,7 @@
     "nodemon": "^3.1.9",
     "pino-pretty": "^13.0.0",
     "prettier": "^3.4.2",
+    "socket.io-client": "^4.8.3",
     "supertest": "^7.0.0"
   }
 }

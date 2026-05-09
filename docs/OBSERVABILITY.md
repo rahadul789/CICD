@@ -162,6 +162,54 @@ Then check:
 - Grafana dashboard panels update
 - Loki logs show request and error events
 
+## Generate Socket.IO Traffic
+
+This project includes a Socket.IO traffic script for realtime load testing.
+
+Default scenario:
+
+- 50 connected Socket.IO clients
+- each client sends 5 messages
+- connections stay open for 30 seconds
+
+Run against local app:
+
+```bash
+npm run traffic:socket
+```
+
+Run against production app from PowerShell:
+
+```powershell
+$env:SOCKET_TRAFFIC_URL="http://72.60.219.174"
+npm run traffic:socket
+```
+
+More aggressive production scenario:
+
+```powershell
+$env:SOCKET_TRAFFIC_URL="http://72.60.219.174"
+$env:SOCKET_TRAFFIC_CLIENTS="50"
+$env:SOCKET_TRAFFIC_MESSAGES_PER_CLIENT="20"
+$env:SOCKET_TRAFFIC_MESSAGE_INTERVAL_MS="250"
+$env:SOCKET_TRAFFIC_HOLD_MS="60000"
+npm run traffic:socket
+```
+
+After running it, check Grafana:
+
+- active Socket.IO connections should rise while the script is holding connections
+- messages sent should increase
+- request/log panels should show realtime activity
+- Loki should show Socket.IO connection and broadcast logs
+
+Useful PromQL:
+
+```promql
+app_socket_io_active_connections
+sum by (source) (app_messages_sent_total)
+```
+
 ## Production Health Checks
 
 Run on VPS:
