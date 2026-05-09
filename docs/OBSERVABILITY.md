@@ -266,6 +266,8 @@ Note: mixed traffic production MongoDB Atlas-e fake messages save kore. Test ses
 
 To discover how much traffic your VPS can handle, use the stress ramp script.
 
+For detailed explanation of RPS, socket clients, p95 latency, error rate, and your actual stress test result, read [Capacity And Stress Testing Guide](CAPACITY_TESTING.md).
+
 It increases traffic phase by phase and stops when:
 
 - HTTP error rate reaches 10 percent

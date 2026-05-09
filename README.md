@@ -137,6 +137,7 @@ npm run format
 
 - [Local Setup](docs/LOCAL_SETUP.md)
 - [Observability Guide](docs/OBSERVABILITY.md)
+- [Capacity And Stress Testing Guide](docs/CAPACITY_TESTING.md)
 - [CI/CD Guide](docs/CICD.md)
 - [Production Deployment Guide](docs/DEPLOYMENT.md)
 - [Production Checklist](docs/PRODUCTION_CHECKLIST.md)
