@@ -210,6 +210,127 @@ app_socket_io_active_connections
 sum by (source) (app_messages_sent_total)
 ```
 
+## Generate Mixed Traffic
+
+This scenario is closer to a real busy app:
+
+- 50 Socket.IO clients stay connected
+- every socket client keeps sending messages
+- 30 HTTP requests per second run in parallel
+- total duration is 2 minutes
+
+Run against production from PowerShell:
+
+```powershell
+$env:MIXED_TRAFFIC_URL="http://72.60.219.174"
+npm run traffic:mixed
+```
+
+The default values are:
+
+```txt
+MIXED_TRAFFIC_DURATION_SECONDS=120
+MIXED_TRAFFIC_HTTP_RPS=30
+MIXED_TRAFFIC_SOCKET_CLIENTS=50
+MIXED_TRAFFIC_SOCKET_MESSAGE_INTERVAL_MS=1000
+```
+
+So the default 2-minute run creates roughly:
+
+- 3,600 HTTP requests
+- 6,000 Socket.IO messages if all 50 clients stay connected
+
+Customize it:
+
+```powershell
+$env:MIXED_TRAFFIC_URL="http://72.60.219.174"
+$env:MIXED_TRAFFIC_DURATION_SECONDS="120"
+$env:MIXED_TRAFFIC_HTTP_RPS="30"
+$env:MIXED_TRAFFIC_SOCKET_CLIENTS="50"
+$env:MIXED_TRAFFIC_SOCKET_MESSAGE_INTERVAL_MS="1000"
+npm run traffic:mixed
+```
+
+Grafana/Prometheus-e watch:
+
+```promql
+sum(rate(app_http_requests_total[1m]))
+app_socket_io_active_connections
+sum by (source) (app_messages_sent_total)
+histogram_quantile(0.95, sum(rate(app_http_request_duration_seconds_bucket[5m])) by (le))
+```
+
+Note: mixed traffic production MongoDB Atlas-e fake messages save kore. Test sesh hole data cleanup lagte pare.
+
+## Find Breaking Point
+
+To discover how much traffic your VPS can handle, use the stress ramp script.
+
+It increases traffic phase by phase and stops when:
+
+- HTTP error rate reaches 10 percent
+- or p95 latency reaches 3000ms
+- or all socket clients disconnect
+
+Run against production from PowerShell:
+
+```powershell
+$env:STRESS_TRAFFIC_URL="http://72.60.219.174"
+npm run traffic:stress
+```
+
+Default ramp:
+
+```txt
+STRESS_TRAFFIC_PHASE_SECONDS=30
+STRESS_TRAFFIC_HTTP_START_RPS=50
+STRESS_TRAFFIC_HTTP_STEP_RPS=50
+STRESS_TRAFFIC_HTTP_MAX_RPS=3000
+STRESS_TRAFFIC_SOCKET_START_CLIENTS=50
+STRESS_TRAFFIC_SOCKET_STEP_CLIENTS=25
+STRESS_TRAFFIC_SOCKET_MAX_CLIENTS=1000
+STRESS_TRAFFIC_SOCKET_MESSAGE_INTERVAL_MS=1000
+STRESS_TRAFFIC_FAIL_ERROR_RATE_PERCENT=10
+STRESS_TRAFFIC_FAIL_P95_MS=3000
+```
+
+For your KVM 1 VPS with 1 CPU core and 4GB memory, start with this practical run:
+
+```powershell
+$env:STRESS_TRAFFIC_URL="http://72.60.219.174"
+$env:STRESS_TRAFFIC_PHASE_SECONDS="30"
+$env:STRESS_TRAFFIC_HTTP_START_RPS="50"
+$env:STRESS_TRAFFIC_HTTP_STEP_RPS="50"
+$env:STRESS_TRAFFIC_HTTP_MAX_RPS="3000"
+$env:STRESS_TRAFFIC_SOCKET_START_CLIENTS="50"
+$env:STRESS_TRAFFIC_SOCKET_STEP_CLIENTS="25"
+$env:STRESS_TRAFFIC_SOCKET_MAX_CLIENTS="1000"
+$env:STRESS_TRAFFIC_SOCKET_MESSAGE_INTERVAL_MS="1000"
+npm run traffic:stress
+```
+
+More aggressive run:
+
+```powershell
+$env:STRESS_TRAFFIC_URL="http://72.60.219.174"
+$env:STRESS_TRAFFIC_PHASE_SECONDS="20"
+$env:STRESS_TRAFFIC_HTTP_START_RPS="100"
+$env:STRESS_TRAFFIC_HTTP_STEP_RPS="100"
+$env:STRESS_TRAFFIC_HTTP_MAX_RPS="2000"
+$env:STRESS_TRAFFIC_SOCKET_START_CLIENTS="100"
+$env:STRESS_TRAFFIC_SOCKET_STEP_CLIENTS="50"
+$env:STRESS_TRAFFIC_SOCKET_MAX_CLIENTS="500"
+$env:STRESS_TRAFFIC_SOCKET_MESSAGE_INTERVAL_MS="500"
+npm run traffic:stress
+```
+
+Professional interpretation:
+
+- first phase where p95 latency crosses 3000ms is your practical limit
+- first phase where errors cross 10 percent is your breaking point
+- real production capacity should be much lower than the breaking point
+- script prints `lastHealthyPhase`, `breakingPhase`, and a conservative `suggestedProductionTarget`
+
 ## Production Health Checks
 
 Run on VPS:
