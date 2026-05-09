@@ -187,7 +187,7 @@ Goal: local machine-এ পুরো production-like stack Docker Compose দি
 Services:
 
 - app
-- mongodb
+- MongoDB Atlas (external database)
 - prometheus
 - grafana
 - loki
@@ -221,7 +221,7 @@ Learning outcome:
 Verification:
 
 - `docker compose up --build` successful হবে
-- app MongoDB container-এর সাথে connect করবে
+- app MongoDB Atlas-এর সাথে connect করবে
 - Prometheus target healthy দেখাবে
 - Grafana dashboard metrics দেখাবে
 - Loki logs query করা যাবে
@@ -352,4 +352,4 @@ Verification:
 - [x] Milestone 5: Docker and Local Observability Stack
 - [x] Milestone 6: Testing, Linting, and CI
 - [x] Milestone 7: Production Deployment and CD
-- [ ] Milestone 8: Documentation and Final Walkthrough
+- [x] Milestone 8: Documentation and Final Walkthrough

@@ -1,38 +1,57 @@
 # Node Observability Deployment Lab
 
-এই project scratch থেকে professional Node.js deployment শেখার জন্য বানানো হচ্ছে।
+এই project scratch থেকে বানানো একটি professional Node.js deployment and observability lab.
+এখানে backend app, realtime Socket.IO, MongoDB Atlas, structured logs, Prometheus metrics,
+Grafana dashboard, Loki logs, Docker, CI/CD, and VPS deployment একসাথে আছে।
 
-Current status:
+## Current Status
 
-- Milestone 1 complete: Node.js + Express + Socket.IO + MongoDB base app
-- Milestone 2 complete: Pino structured logging, request id, centralized errors
-- Milestone 3 complete: controlled chaos and failure simulation routes
-- Milestone 4 complete: Prometheus metrics endpoint and custom app metrics
-- Milestone 5 complete: Docker Compose observability stack
-- Milestone 6 complete: tests, linting, formatting, and CI workflow
-- Milestone 7 complete: production compose, GHCR image deploy workflow, and VPS deployment guide
+- Milestone 1: Node.js + Express + Socket.IO + MongoDB base app
+- Milestone 2: Pino structured logging, request id, centralized error handling
+- Milestone 3: controlled chaos and failure simulation routes
+- Milestone 4: Prometheus metrics endpoint and custom app metrics
+- Milestone 5: Docker Compose local observability stack
+- Milestone 6: tests, linting, formatting, and CI workflow
+- Milestone 7: production deployment and CD to VPS
+- Milestone 8: final documentation, walkthrough, troubleshooting, and checklist
 
-## Local Run
+## Architecture
 
-1. Dependencies install করুন:
+```txt
+Client
+  |
+  v
+Nginx on VPS
+  |
+  v
+Docker Compose production stack
+  |
+  +-- Node.js app -> MongoDB Atlas
+  +-- Prometheus -> scrape app /metrics
+  +-- Grafana -> read Prometheus metrics and Loki logs
+  +-- Loki -> store logs
+  +-- Promtail -> collect Docker container logs
+
+GitHub Actions -> GHCR Docker image -> SSH deploy to VPS
+```
+
+## Quick Start
+
+Install dependencies:
 
 ```bash
 npm install
 ```
 
-2. `.env.example` থেকে `.env` তৈরি করুন এবং দরকার হলে value বদলান।
+Create `.env` from `.env.example`, then set your real `MONGO_URI`.
 
-3. MongoDB Atlas URI `.env` ফাইলে রাখুন।
-
-Atlas Network Access-এ আপনার current IP whitelist থাকতে হবে।
-
-4. Development server চালান:
+Run locally:
 
 ```bash
 npm run dev
 ```
 
-5. API check করুন:
+Check app:
 
 ```bash
 curl http://localhost:3000/health/live
@@ -40,6 +59,35 @@ curl http://localhost:3000/health/ready
 curl http://localhost:3000/metrics
 curl http://localhost:3000/api/messages
 ```
+
+Run full local Docker observability stack:
+
+```bash
+docker compose up -d --build
+```
+
+Stop local stack:
+
+```bash
+docker compose down
+```
+
+## Main URLs
+
+Local:
+
+- App: `http://localhost:3000`
+- Metrics: `http://localhost:3000/metrics`
+- Prometheus: `http://localhost:9090`
+- Grafana: `http://localhost:3001`
+- Loki: `http://localhost:3100`
+
+Production:
+
+- App through Nginx: `http://72.60.219.174`
+- App internal health: `http://127.0.0.1:3001/health/ready`
+- Grafana through SSH tunnel: `http://localhost:3002`
+- Prometheus through SSH tunnel: `http://localhost:9090`
 
 ## Main API
 
@@ -50,7 +98,7 @@ curl http://localhost:3000/api/messages
 - `GET /api/messages`
 - `POST /api/messages`
 
-Create message example:
+Create message:
 
 ```bash
 curl -X POST http://localhost:3000/api/messages \
@@ -70,182 +118,7 @@ Server emits:
 - `message:new`
 - `message:error`
 
-## Logging
-
-এই project structured logging-এর জন্য Pino use করে।
-
-Local development-এ logs readable format-এ দেখা যাবে, আর production-এ JSON logs output হবে। প্রতিটা HTTP request-এ একটি request id থাকবে।
-
-Useful behavior:
-
-- incoming `x-request-id` থাকলে app সেটা preserve করবে
-- না থাকলে app নিজে request id generate করবে
-- response header-এ `x-request-id` ফেরত যাবে
-- error response body-তেও `requestId` থাকবে
-- server startup, MongoDB lifecycle, HTTP requests, API errors এবং Socket.IO events log হবে
-
-Example error response:
-
-```json
-{
-  "error": {
-    "message": "Route not found: GET /missing",
-    "statusCode": 404,
-    "requestId": "demo-request-id"
-  }
-}
-```
-
-Local log level `.env` থেকে control করা যাবে:
-
-```bash
-LOG_LEVEL=debug
-```
-
-## Chaos Routes
-
-Chaos routes production issue simulate করার জন্য। এগুলো default off থাকে।
-
-Enable করতে `.env` এ set করুন:
-
-```bash
-ENABLE_CHAOS_ROUTES=true
-CHAOS_MAX_DELAY_MS=10000
-CHAOS_MAX_CPU_MS=5000
-CHAOS_MAX_MEMORY_MB=100
-```
-
-Available routes:
-
-- `GET /api/demo`
-- `GET /api/demo/slow?ms=3000`
-- `GET /api/demo/random-slow?min=500&max=5000`
-- `GET /api/demo/error`
-- `GET /api/demo/cpu-spike?ms=1000`
-- `GET /api/demo/memory-pressure?mb=25`
-- `GET /api/demo/memory-pressure?mb=25&retain=true&confirm=true`
-- `GET /api/demo/memory-release`
-
-Destructive routes:
-
-- `GET /api/demo/unhandled-error?confirm=true`
-- `GET /api/demo/crash?confirm=true`
-
-এই destructive routes server বন্ধ করে দিতে পারে, তাই এগুলো শুধু local/controlled environment-এ চালাবেন।
-
-Example:
-
-```bash
-curl "http://localhost:3000/api/demo/slow?ms=2000"
-curl "http://localhost:3000/api/demo/error" -H "x-request-id: demo-error-1"
-```
-
-## Metrics
-
-Prometheus-compatible metrics endpoint:
-
-```bash
-curl http://localhost:3000/metrics
-```
-
-Custom metrics:
-
-- `app_http_requests_total`
-- `app_http_request_duration_seconds`
-- `app_http_errors_total`
-- `app_socket_io_active_connections`
-- `app_messages_sent_total`
-- `app_mongodb_ready`
-- `app_mongodb_ready_state`
-
-Node.js default metrics also expose হবে, যেমন CPU, memory, event loop এবং garbage collection related metrics।
-
-Useful PromQL examples:
-
-```promql
-sum(rate(app_http_requests_total[1m]))
-sum(rate(app_http_errors_total[1m]))
-histogram_quantile(0.95, sum(rate(app_http_request_duration_seconds_bucket[5m])) by (le))
-app_socket_io_active_connections
-app_mongodb_ready
-sum by (source) (app_messages_sent_total)
-```
-
-Standalone app `/metrics` expose করে। Docker stack চালালে Prometheus automatically এই endpoint scrape করে।
-
-## Docker Stack
-
-Full local observability stack চালাতে:
-
-```bash
-docker compose up -d --build
-```
-
-যদি port `3000` busy থাকে, PowerShell-এ:
-
-```powershell
-$env:APP_HOST_PORT="3002"
-docker compose up -d --build
-```
-
-এই machine-এ Docker stack app `3002` port-এ চালানো হয়েছে, কারণ `3000` আগে থেকেই busy ছিল।
-
-Default URLs:
-
-- App: `http://localhost:3000`
-- Metrics: `http://localhost:3000/metrics`
-- Prometheus: `http://localhost:9090`
-- Grafana: `http://localhost:3001`
-- Loki: `http://localhost:3100`
-  এই run-এর URLs:
-
-- App: `http://localhost:3002`
-- Metrics: `http://localhost:3002/metrics`
-- Prometheus: `http://localhost:9090`
-- Grafana: `http://localhost:3001`
-- Loki: `http://localhost:3100`
-
-Grafana dashboard:
-
-- `http://localhost:3001/d/node-observability-lab/node-observability-lab`
-
-Grafana login:
-
-- username: `admin`
-- password: `admin`
-
-Useful Docker commands:
-
-```bash
-docker compose ps
-docker compose logs -f app
-docker compose logs -f promtail
-docker compose down
-```
-
-সব volume সহ data মুছতে:
-
-```bash
-docker compose down -v
-```
-
-Prometheus targets check:
-
-```bash
-curl http://localhost:9090/api/v1/targets
-```
-
-Loki readiness check:
-
-```bash
-curl http://localhost:3100/ready
-```
-
-এই stack-এ Prometheus app-এর `/metrics` scrape করে, Grafana Prometheus/Loki datasource auto-provision করে, আর Promtail Docker container logs Loki-তে push করে।
-
-## Quality Checks
-
-Local quality commands:
+## Quality Commands
 
 ```bash
 npm run check
@@ -254,52 +127,26 @@ npm run format:check
 npm test
 ```
 
-Auto-format করতে:
+Format files:
 
 ```bash
 npm run format
 ```
 
-Tests real MongoDB/Atlas hit করে না। CI-safe tests app routes, health responses, request id behavior, metrics endpoint, এবং message validation check করে।
+## Documentation
 
-CI workflow:
+- [Local Setup](docs/LOCAL_SETUP.md)
+- [Observability Guide](docs/OBSERVABILITY.md)
+- [CI/CD Guide](docs/CICD.md)
+- [Production Deployment Guide](docs/DEPLOYMENT.md)
+- [Production Checklist](docs/PRODUCTION_CHECKLIST.md)
+- [Troubleshooting Guide](docs/TROUBLESHOOTING.md)
+- [Final Walkthrough](docs/FINAL_WALKTHROUGH.md)
 
-- file: `.github/workflows/ci.yml`
-- runs on push to `main`/`master`
-- runs on pull request
-- steps: `npm ci`, syntax check, lint, format check, tests, Docker image build
+## Important Notes
 
-## Production Deployment
-
-Production deployment files:
-
-- `compose.prod.yml`
-- `.github/workflows/deploy.yml`
-- `deployment/nginx/ip-based.conf`
-- `deployment/production.env.example`
-- `docs/DEPLOYMENT.md`
-
-Deploy workflow:
-
-- runs on push to `main`
-- runs quality gate first
-- builds and pushes Docker image to `ghcr.io/rahadul789/cicd`
-- connects to VPS over SSH
-- runs `docker compose -f compose.prod.yml pull`
-- runs `docker compose -f compose.prod.yml up -d`
-- verifies `/health/ready`
-
-Required GitHub Secrets:
-
-- `VPS_HOST`
-- `VPS_USER`
-- `VPS_SSH_KEY`
-
-Optional GitHub Secrets:
-
-- `VPS_PORT`
-- `VPS_APP_DIR`
-
-Full guide: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
-
-Lets test is github action is working
+- Real secrets must stay in `.env` or GitHub Secrets, never in git.
+- Production chaos routes are disabled by default.
+- Production Grafana, Prometheus, and Loki are private localhost-only services.
+- Use SSH tunnel to view production Grafana safely.
+- Add domain + HTTPS before exposing this as a real public service.
