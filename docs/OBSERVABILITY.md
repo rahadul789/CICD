@@ -262,6 +262,61 @@ histogram_quantile(0.95, sum(rate(app_http_request_duration_seconds_bucket[5m]))
 
 Note: mixed traffic production MongoDB Atlas-e fake messages save kore. Test sesh hole data cleanup lagte pare.
 
+## Generate Steady Realistic Traffic
+
+This scenario runs forever until you manually stop it with `Ctrl+C`.
+
+Default behavior:
+
+- base HTTP traffic never intentionally goes below 20 requests/second
+- 15 Socket.IO clients stay connected
+- every 5 seconds, 3 messages are sent through Socket.IO and saved to MongoDB
+- random traffic spikes happen on top of the 20 requests/second base load
+
+Run against production from PowerShell:
+
+```powershell
+$env:STEADY_TRAFFIC_URL="http://72.60.219.174"
+npm run traffic:steady
+```
+
+Default values:
+
+```txt
+STEADY_TRAFFIC_BASE_HTTP_RPS=20
+STEADY_TRAFFIC_SOCKET_CLIENTS=15
+STEADY_TRAFFIC_DB_MESSAGES_PER_BATCH=3
+STEADY_TRAFFIC_DB_BATCH_INTERVAL_MS=5000
+STEADY_TRAFFIC_SPIKES_ENABLED=true
+STEADY_TRAFFIC_SPIKE_MIN_GAP_SECONDS=30
+STEADY_TRAFFIC_SPIKE_MAX_GAP_SECONDS=90
+STEADY_TRAFFIC_SPIKE_MIN_DURATION_SECONDS=10
+STEADY_TRAFFIC_SPIKE_MAX_DURATION_SECONDS=25
+STEADY_TRAFFIC_SPIKE_MIN_EXTRA_RPS=40
+STEADY_TRAFFIC_SPIKE_MAX_EXTRA_RPS=100
+```
+
+Customize spike intensity:
+
+```powershell
+$env:STEADY_TRAFFIC_URL="http://72.60.219.174"
+$env:STEADY_TRAFFIC_BASE_HTTP_RPS="20"
+$env:STEADY_TRAFFIC_SOCKET_CLIENTS="15"
+$env:STEADY_TRAFFIC_SPIKE_MIN_EXTRA_RPS="80"
+$env:STEADY_TRAFFIC_SPIKE_MAX_EXTRA_RPS="160"
+npm run traffic:steady
+```
+
+Disable spikes:
+
+```powershell
+$env:STEADY_TRAFFIC_URL="http://72.60.219.174"
+$env:STEADY_TRAFFIC_SPIKES_ENABLED="false"
+npm run traffic:steady
+```
+
+Note: HTTP traffic in this script uses read-only endpoints. MongoDB writes come from the 3 Socket.IO messages every 5 seconds.
+
 ## Find Breaking Point
 
 To discover how much traffic your VPS can handle, use the stress ramp script.

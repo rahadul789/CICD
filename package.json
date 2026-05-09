@@ -10,6 +10,7 @@
     "start": "node src/server.js",
     "check": "node --check src/server.js",
     "traffic:mixed": "node scripts/mixed-traffic.js",
+    "traffic:steady": "node scripts/steady-traffic.js",
     "traffic:socket": "node scripts/socket-traffic.js",
     "traffic:stress": "node scripts/stress-traffic.js",
     "lint": "eslint .",
